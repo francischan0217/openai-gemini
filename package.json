@@ -1,6 +1,9 @@
 {
+  "type": "module",
   "dependencies": {
-    "@whatwg-node/server": "0.9"
+    "@whatwg-node/server": "0.9",
+    "node-fetch": "^3.3.0",
+    "cheerio": "^1.0.0-rc.12"
   },
   "devDependencies": {
     "nodemon": "3"
@@ -14,3 +17,4 @@
     "dev:bun": "bun --watch bun.mjs"
   }
 }
+
