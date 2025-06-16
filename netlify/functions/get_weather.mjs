@@ -1,14 +1,9 @@
-// weather.mjs
-import * as cheerio from 'cheerio';
-
-// If using Node.js 18+, fetch is built-in. If using older versions, uncomment below:
-// import fetch from 'node-fetch';
-
+// weather.mjs - Cloudflare Workers Compatible Version
 const TAG = 'weather';
 
-// Built-in configuration - no need to pass from external source
+// Built-in configuration
 const WEATHER_CONFIG = {
-    "api_host": "mj7p3y7naa.re.qweatherapi.com",
+    "api_host": "devapi.qweather.com", // Updated to use official API
     "api_key": "a861d0d5e7bf4ee1a83d9a9e4f96d4da",
     "default_location": "香港"
 };
@@ -61,9 +56,30 @@ const WEATHER_CODE_MAP = {
 // 获取城市信息
 async function fetchCityInfo(location, apiKey, apiHost) {
     try {
-        const url = `https://${apiHost}/geo/v2/city/lookup?key=${apiKey}&location=${location}&lang=zh`;
-        const response = await fetch(url, { headers: HEADERS });
+        const url = `https://${apiHost}/v2/city/lookup?key=${apiKey}&location=${location}&lang=zh`;
+        console.log(`Fetching city info from: ${url}`);
+        
+        const response = await fetch(url, { 
+            headers: HEADERS,
+            cf: {
+                cacheTtl: 300, // Cache for 5 minutes in Cloudflare
+                cacheEverything: true
+            }
+        });
+        
+        if (!response.ok) {
+            console.error(`City API error: ${response.status} ${response.statusText}`);
+            return null;
+        }
+        
         const data = await response.json();
+        console.log('City API response:', data);
+        
+        if (data.code !== "200") {
+            console.error(`API error code: ${data.code}`);
+            return null;
+        }
+        
         return data.location && data.location.length > 0 ? data.location[0] : null;
     } catch (error) {
         console.error('Error fetching city info:', error);
@@ -71,58 +87,65 @@ async function fetchCityInfo(location, apiKey, apiHost) {
     }
 }
 
-// 获取天气页面
-async function fetchWeatherPage(url) {
+// 获取当前天气信息
+async function fetchCurrentWeather(locationId, apiKey, apiHost) {
     try {
-        const response = await fetch(url, { headers: HEADERS });
-        if (response.ok) {
-            const html = await response.text();
-            return cheerio.load(html);
+        const url = `https://${apiHost}/v7/weather/now?key=${apiKey}&location=${locationId}&lang=zh`;
+        console.log(`Fetching current weather from: ${url}`);
+        
+        const response = await fetch(url, { 
+            headers: HEADERS,
+            cf: {
+                cacheTtl: 600, // Cache for 10 minutes
+                cacheEverything: true
+            }
+        });
+        
+        if (!response.ok) {
+            console.error(`Weather API error: ${response.status} ${response.statusText}`);
+            return null;
         }
-        return null;
+        
+        const data = await response.json();
+        console.log('Current weather response:', data);
+        
+        return data.code === "200" ? data.now : null;
     } catch (error) {
-        console.error('Error fetching weather page:', error);
+        console.error('Error fetching current weather:', error);
         return null;
     }
 }
 
-// 解析天气信息
-function parseWeatherInfo($) {
-    const cityName = $('h1.c-submenu__location').text().trim();
-    const currentAbstract = $('.c-city-weather-current .current-abstract').text().trim() || '未知';
-    
-    const currentBasic = {};
-    $('.c-city-weather-current .current-basic .current-basic___item').each((index, element) => {
-        const text = $(element).text().trim();
-        const parts = text.split(' ').filter(part => part.length > 0);
-        if (parts.length === 2) {
-            const [value, key] = parts;
-            currentBasic[key] = value;
-        }
-    });
-    
-    const tempsList = [];
-    $('.city-forecast-tabs__row').slice(0, 7).each((index, element) => {
-        const date = $(element).find('.date-bg .date').text().trim();
-        const iconSrc = $(element).find('.date-bg .icon').attr('src') || '';
-        const weatherCode = iconSrc.split('/').pop().split('.')[0];
-        const weather = WEATHER_CODE_MAP[weatherCode] || '未知';
+// 获取7天天气预报
+async function fetchWeatherForecast(locationId, apiKey, apiHost) {
+    try {
+        const url = `https://${apiHost}/v7/weather/7d?key=${apiKey}&location=${locationId}&lang=zh`;
+        console.log(`Fetching forecast from: ${url}`);
         
-        const temps = [];
-        $(element).find('.tmp-cont .temp').each((i, tempEl) => {
-            temps.push($(tempEl).text().trim());
+        const response = await fetch(url, { 
+            headers: HEADERS,
+            cf: {
+                cacheTtl: 1800, // Cache for 30 minutes
+                cacheEverything: true
+            }
         });
         
-        const highTemp = temps.length >= 2 ? temps[0] : null;
-        const lowTemp = temps.length >= 2 ? temps[temps.length - 1] : null;
+        if (!response.ok) {
+            console.error(`Forecast API error: ${response.status} ${response.statusText}`);
+            return null;
+        }
         
-        tempsList.push([date, weather, highTemp, lowTemp]);
-    });
-    
-    return { cityName, currentAbstract, currentBasic, tempsList };
+        const data = await response.json();
+        console.log('Forecast response:', data);
+        
+        return data.code === "200" ? data.daily : null;
+    } catch (error) {
+        console.error('Error fetching forecast:', error);
+        return null;
+    }
 }
 
-// 主要天气获取函数 - 使用内置配置，无需外部传入
+// 主要天气获取函数
 export async function getWeather(location = null, lang = 'zh_CN') {
     const { api_host, api_key, default_location } = WEATHER_CONFIG;
     
@@ -133,6 +156,7 @@ export async function getWeather(location = null, lang = 'zh_CN') {
     
     console.log(`Getting weather for: ${location}`);
     
+    // Step 1: 获取城市信息
     const cityInfo = await fetchCityInfo(location, api_key, api_host);
     if (!cityInfo) {
         return {
@@ -142,33 +166,61 @@ export async function getWeather(location = null, lang = 'zh_CN') {
         };
     }
     
-    const $ = await fetchWeatherPage(cityInfo.fxLink);
-    if (!$) {
+    console.log(`Found city: ${cityInfo.name}, ID: ${cityInfo.id}`);
+    
+    // Step 2: 获取当前天气
+    const currentWeather = await fetchCurrentWeather(cityInfo.id, api_key, api_host);
+    if (!currentWeather) {
         return {
             action: 'REQLLM',
-            text: null,
-            data: '请求失败'
+            text: `获取 ${cityInfo.name} 的当前天气信息失败`,
+            data: null
         };
     }
     
-    const { cityName, currentAbstract, currentBasic, tempsList } = parseWeatherInfo($);
+    // Step 3: 获取7天预报
+    const forecast = await fetchWeatherForecast(cityInfo.id, api_key, api_host);
     
-    let weatherReport = `您查询的位置是：${cityName}\n\n当前天气: ${currentAbstract}\n`;
+    // 构建天气报告
+    let weatherReport = `您查询的位置是：${cityInfo.name}\n\n`;
     
-    // 添加有效的当前天气参数
-    if (Object.keys(currentBasic).length > 0) {
-        weatherReport += '详细参数：\n';
-        for (const [key, value] of Object.entries(currentBasic)) {
-            if (value !== '0') {
-                weatherReport += `  · ${key}: ${value}\n`;
-            }
-        }
+    // 当前天气
+    const currentTemp = currentWeather.temp;
+    const currentCondition = WEATHER_CODE_MAP[currentWeather.icon] || currentWeather.text;
+    const feelsLike = currentWeather.feelsLike;
+    const humidity = currentWeather.humidity;
+    const windDir = currentWeather.windDir;
+    const windScale = currentWeather.windScale;
+    const pressure = currentWeather.pressure;
+    
+    weatherReport += `当前天气: ${currentCondition}\n`;
+    weatherReport += `气温: ${currentTemp}°C`;
+    if (feelsLike && feelsLike !== currentTemp) {
+        weatherReport += ` (体感温度: ${feelsLike}°C)`;
     }
+    weatherReport += '\n';
     
-    // 添加7天预报
-    weatherReport += '\n未来7天预报：\n';
-    for (const [date, weather, high, low] of tempsList) {
-        weatherReport += `${date}: ${weather}，气温 ${low}~${high}\n`;
+    // 详细参数
+    weatherReport += '\n详细参数：\n';
+    if (humidity) weatherReport += `  · 湿度: ${humidity}%\n`;
+    if (windDir && windScale) weatherReport += `  · 风向风力: ${windDir} ${windScale}级\n`;
+    if (pressure) weatherReport += `  · 气压: ${pressure}hPa\n`;
+    
+    // 7天预报
+    if (forecast && forecast.length > 0) {
+        weatherReport += '\n未来7天预报：\n';
+        forecast.forEach(day => {
+            const date = new Date(day.fxDate).toLocaleDateString('zh-CN', { 
+                month: 'short', 
+                day: 'numeric',
+                weekday: 'short'
+            });
+            const dayWeather = WEATHER_CODE_MAP[day.iconDay] || day.textDay;
+            const nightWeather = WEATHER_CODE_MAP[day.iconNight] || day.textNight;
+            const weather = dayWeather === nightWeather ? dayWeather : `${dayWeather}转${nightWeather}`;
+            
+            weatherReport += `${date}: ${weather}，${day.tempMin}°C~${day.tempMax}°C\n`;
+        });
     }
     
     weatherReport += '\n（如需某一天的具体天气，请告诉我日期）';
@@ -176,16 +228,19 @@ export async function getWeather(location = null, lang = 'zh_CN') {
     return {
         action: 'REQLLM',
         text: weatherReport,
-        data: null
+        data: {
+            city: cityInfo.name,
+            current: currentWeather,
+            forecast: forecast
+        }
     };
 }
 
-// Helper function to update config if needed
+// Helper functions
 export function updateWeatherConfig(newConfig) {
     Object.assign(WEATHER_CONFIG, newConfig);
 }
 
-// Getter function to access current config
 export function getWeatherConfig() {
     return { ...WEATHER_CONFIG };
 }
