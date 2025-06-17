@@ -227,12 +227,20 @@ export default async (request, context) => {
         
         // Call your existing weather function
         const result = await getWeather(location, lang);
-        
+
+        const openAIResponse = {
+            location: result.data?.city || location,
+            current_weather: result.data?.current || null,
+            forecast: result.data?.forecast || null,
+            summary: result.text,
+            success: true
+        };
+      
         // Return proper Response object format
         return new Response(JSON.stringify(result), {
             status: 200,
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'text/plain',
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type'
@@ -244,10 +252,8 @@ export default async (request, context) => {
         
         // Return proper error response
         return new Response(JSON.stringify({
-            action: 'REQLLM',
-            text: '天气查询服务暂时不可用，请稍后再试',
-            data: null,
-            error: error.message
+            error: error.message,
+            success: false
         }), {
             status: 500,
             headers: {
