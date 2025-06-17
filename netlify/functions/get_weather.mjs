@@ -34,6 +34,7 @@ const HEADERS = {
 // Your existing helper functions (keep all of them)
 async function fetchCityInfo(location, apiKey, apiHost) {
     try {
+        const encodedLocation = encodeURIComponent(location);
         const url = `https://${apiHost}/geo/v2/city/lookup?key=${apiKey}&location=${location}&lang=zh`;
         console.log(`Fetching city info from: ${url}`);
         
