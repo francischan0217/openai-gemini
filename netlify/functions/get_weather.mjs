@@ -323,28 +323,33 @@ export default async (request, context) => {
             });
         }
         
-        // Return minimal JSON with just the summary
+        // ✅ STANDARDIZED: Use consistent format
         return new Response(JSON.stringify({
-            summary: result.summary,
-            success: true,
-            ai_generated: result.generated_by === 'gemini'
+            content: result.summary,           // Main content
+            success: result.success,
+            function_name: "get_weather",
+            metadata: {
+                ai_generated: result.generated_by === 'gemini',
+                data_source: "qweather_api",
+                location: result.data?.city,
+                forecast_days: result.data?.forecast?.length || 0
+            },
+            error: result.success ? null : result.summary
         }), {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type'
+                'Access-Control-Allow-Origin': '*'
             }
         });
         
     } catch (error) {
         console.error('Function error:', error);
         
-        // Return JSON error response
         return new Response(JSON.stringify({
-            summary: '抱歉，獲取天氣信息時發生錯誤，請稍後重試。',
+            content: '抱歉，獲取天氣信息時發生錯誤，請稍後重試。',
             success: false,
+            function_name: "get_weather",
             error: error.message
         }), {
             status: 500,
