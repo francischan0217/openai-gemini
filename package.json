@@ -1,6 +1,9 @@
 {
   "type": "module",
+  "name": "weather-function-project",
+  "version": "1.0.0",
   "dependencies": {
+    "@google/generative-ai": "^0.7.1",
     "@whatwg-node/server": "0.9",
     "node-fetch": "^3.3.0",
     "cheerio": "^1.0.0-rc.12"
@@ -14,7 +17,12 @@
     "start:deno": "deno --allow-env --allow-net deno.mjs",
     "dev:deno": "deno --watch --allow-env --allow-net deno.mjs",
     "start:bun": "bun bun.mjs",
-    "dev:bun": "bun --watch bun.mjs"
+    "dev:bun": "bun --watch bun.mjs",
+    "build": "echo 'Build complete'",
+    "netlify:dev": "netlify dev"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
 
