@@ -240,7 +240,7 @@ export default async (request, context) => {
         return new Response(JSON.stringify(result), {
             status: 200,
             headers: {
-                'Content-Type': 'text/plain',
+                'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type'
