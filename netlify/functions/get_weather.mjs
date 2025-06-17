@@ -3,9 +3,9 @@ const TAG = 'weather';
 
 // Built-in configuration
 const WEATHER_CONFIG = {
-    "api_host": "devapi.qweather.com",
-    "api_key": "a861d0d5e7bf4ee1a83d9a9e4f96d4da",
-    "default_location": "香港"
+    "api_host": "m9487qfrq4.re.qweatherapi.com",
+    "api_key": "80f8bafcecfb492f8251b630dcecac35",
+    "default_location": "101070101"
 };
 
 const WEATHER_CODE_MAP = {
@@ -131,10 +131,6 @@ async function getWeather(location = null, lang = 'zh_CN') {
     }
     
     console.log(`Getting weather for: ${location}`);
-
-    if (location === '香港' || location?.toLowerCase().includes('hong kong')) {
-        return await getHongKongWeather();
-    }
     
     const cityInfo = await fetchCityInfo(location, api_key, api_host);
     if (!cityInfo) {
@@ -207,55 +203,6 @@ async function getWeather(location = null, lang = 'zh_CN') {
             forecast: forecast
         }
     };
-}
-
-// Alternative Hong Kong-specific weather function
-async function getHongKongWeather() {
-    try {
-        const currentWeatherUrl = 'https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=tc';
-        const forecastUrl = 'https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=fnd&lang=tc';
-        
-        const [currentResponse, forecastResponse] = await Promise.all([
-            fetch(currentWeatherUrl),
-            fetch(forecastUrl)
-        ]);
-        
-        const currentData = await currentResponse.json();
-        const forecastData = await forecastResponse.json();
-      
-        const temperature = currentData.temperature?.data?.[0]?.value || 'N/A';
-        const humidity = currentData.humidity?.data?.[0]?.value || 'N/A';
-        const weatherIcon = currentData.icon?.[0] || 'N/A';
-      
-        
-        let weatherReport = `香港當前天氣：\n\n`;
-        weatherReport += `溫度: ${currentData.temperature}°C\n`;
-        weatherReport += `相對濕度: ${currentData.humidity}%\n`;
-        weatherReport += `天氣狀況: ${currentData.icon[0]}\n`;
-        
-        if (forecastData.weatherForecast) {
-            weatherReport += `\n未來天氣預報：\n`;
-            forecastData.weatherForecast.slice(0, 3).forEach(day => {
-              const minTemp = day.forecastMintemp?.value || 'N/A';
-              const maxTemp = day.forecastMaxtemp?.value || 'N/A';
-                weatherReport += `${day.forecastDate}: ${day.forecastWeather}, ${day.forecastMintemp}°C-${day.forecastMaxtemp}°C\n`;
-            });
-        }
-        
-        return {
-            action: 'REQLLM',
-            text: weatherReport,
-            data: { current: currentData, forecast: forecastData }
-        };
-        
-    } catch (error) {
-        console.error('Hong Kong Observatory API error:', error);
-        return {
-            action: 'REQLLM',
-            text: '獲取香港天氣信息失敗，請稍後再試',
-            data: null
-        };
-    }
 }
 
 // ✅ THIS IS THE CRITICAL ADDITION - PROPER NETLIFY FUNCTION HANDLER
