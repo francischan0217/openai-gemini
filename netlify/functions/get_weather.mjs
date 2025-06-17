@@ -274,7 +274,7 @@ function createFallbackSummary(weatherData) {
     return weatherReport;
 }
 
-// Updated Netlify function handler - Returns only summary for OpenAI
+// Updated Netlify function handler - Returns minimal JSON
 export default async (request, context) => {
     try {
         console.log('Netlify function called:', request.method);
@@ -309,22 +309,29 @@ export default async (request, context) => {
         // Get weather with Gemini-enhanced summary
         const result = await getWeather(location, lang);
         
-        // ✅ FIXED: Return only the summary text for OpenAI
+        // ✅ FIXED: Return minimal JSON that works for both OpenAI and client
         if (!result.success) {
-            return new Response(result.summary, {
+            return new Response(JSON.stringify({
+                summary: result.summary,
+                success: false
+            }), {
                 status: 200,
                 headers: {
-                    'Content-Type': 'text/plain; charset=utf-8',
+                    'Content-Type': 'application/json',
                     'Access-Control-Allow-Origin': '*'
                 }
             });
         }
         
-        // Return just the natural language summary
-        return new Response(result.summary, {
+        // Return minimal JSON with just the summary
+        return new Response(JSON.stringify({
+            summary: result.summary,
+            success: true,
+            ai_generated: result.generated_by === 'gemini'
+        }), {
             status: 200,
             headers: {
-                'Content-Type': 'text/plain; charset=utf-8',
+                'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type'
@@ -334,11 +341,15 @@ export default async (request, context) => {
     } catch (error) {
         console.error('Function error:', error);
         
-        // Return plain text error message
-        return new Response('抱歉，獲取天氣信息時發生錯誤，請稍後重試。', {
+        // Return JSON error response
+        return new Response(JSON.stringify({
+            summary: '抱歉，獲取天氣信息時發生錯誤，請稍後重試。',
+            success: false,
+            error: error.message
+        }), {
             status: 500,
             headers: {
-                'Content-Type': 'text/plain; charset=utf-8',
+                'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             }
         });
