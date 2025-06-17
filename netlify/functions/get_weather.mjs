@@ -1,37 +1,11 @@
-// weather.mjs - Cloudflare Workers Compatible Version
+// get_weather.mjs - Complete Netlify Function Implementation
 const TAG = 'weather';
 
 // Built-in configuration
 const WEATHER_CONFIG = {
-    "api_host": "devapi.qweather.com", // Updated to use official API
+    "api_host": "devapi.qweather.com",
     "api_key": "a861d0d5e7bf4ee1a83d9a9e4f96d4da",
     "default_location": "香港"
-};
-
-const GET_WEATHER_FUNCTION_DESC = {
-    "type": "function",
-    "function": {
-        "name": "get_weather",
-        "description": "获取某个地点的天气，用户应提供一个位置，比如用户说杭州天气，参数为：杭州。",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "location": {
-                    "type": "string",
-                    "description": "地点名，例如杭州。可选参数，如果不提供则不传",
-                },
-                "lang": {
-                    "type": "string",
-                    "description": "返回用户使用的语言code，例如zh_CN/zh_HK/en_US/ja_JP等，默认zh_CN",
-                },
-            },
-            "required": ["lang"],
-        },
-    },
-};
-
-const HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36"
 };
 
 const WEATHER_CODE_MAP = {
@@ -53,7 +27,11 @@ const WEATHER_CODE_MAP = {
     "900": "热", "901": "冷", "999": "未知"
 };
 
-// 获取城市信息
+const HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36"
+};
+
+// Your existing helper functions (keep all of them)
 async function fetchCityInfo(location, apiKey, apiHost) {
     try {
         const url = `https://${apiHost}/v2/city/lookup?key=${apiKey}&location=${location}&lang=zh`;
@@ -62,7 +40,7 @@ async function fetchCityInfo(location, apiKey, apiHost) {
         const response = await fetch(url, { 
             headers: HEADERS,
             cf: {
-                cacheTtl: 300, // Cache for 5 minutes in Cloudflare
+                cacheTtl: 300,
                 cacheEverything: true
             }
         });
@@ -87,7 +65,6 @@ async function fetchCityInfo(location, apiKey, apiHost) {
     }
 }
 
-// 获取当前天气信息
 async function fetchCurrentWeather(locationId, apiKey, apiHost) {
     try {
         const url = `https://${apiHost}/v7/weather/now?key=${apiKey}&location=${locationId}&lang=zh`;
@@ -96,7 +73,7 @@ async function fetchCurrentWeather(locationId, apiKey, apiHost) {
         const response = await fetch(url, { 
             headers: HEADERS,
             cf: {
-                cacheTtl: 600, // Cache for 10 minutes
+                cacheTtl: 600,
                 cacheEverything: true
             }
         });
@@ -116,7 +93,6 @@ async function fetchCurrentWeather(locationId, apiKey, apiHost) {
     }
 }
 
-// 获取7天天气预报
 async function fetchWeatherForecast(locationId, apiKey, apiHost) {
     try {
         const url = `https://${apiHost}/v7/weather/7d?key=${apiKey}&location=${locationId}&lang=zh`;
@@ -125,7 +101,7 @@ async function fetchWeatherForecast(locationId, apiKey, apiHost) {
         const response = await fetch(url, { 
             headers: HEADERS,
             cf: {
-                cacheTtl: 1800, // Cache for 30 minutes
+                cacheTtl: 1800,
                 cacheEverything: true
             }
         });
@@ -145,18 +121,16 @@ async function fetchWeatherForecast(locationId, apiKey, apiHost) {
     }
 }
 
-// 主要天气获取函数
-export async function getWeather(location = null, lang = 'zh_CN') {
+// Your existing getWeather function (keep as is)
+async function getWeather(location = null, lang = 'zh_CN') {
     const { api_host, api_key, default_location } = WEATHER_CONFIG;
     
-    // 如果没有提供位置，使用默认位置
     if (!location) {
         location = default_location;
     }
     
     console.log(`Getting weather for: ${location}`);
     
-    // Step 1: 获取城市信息
     const cityInfo = await fetchCityInfo(location, api_key, api_host);
     if (!cityInfo) {
         return {
@@ -168,7 +142,6 @@ export async function getWeather(location = null, lang = 'zh_CN') {
     
     console.log(`Found city: ${cityInfo.name}, ID: ${cityInfo.id}`);
     
-    // Step 2: 获取当前天气
     const currentWeather = await fetchCurrentWeather(cityInfo.id, api_key, api_host);
     if (!currentWeather) {
         return {
@@ -178,13 +151,10 @@ export async function getWeather(location = null, lang = 'zh_CN') {
         };
     }
     
-    // Step 3: 获取7天预报
     const forecast = await fetchWeatherForecast(cityInfo.id, api_key, api_host);
     
-    // 构建天气报告
     let weatherReport = `您查询的位置是：${cityInfo.name}\n\n`;
     
-    // 当前天气
     const currentTemp = currentWeather.temp;
     const currentCondition = WEATHER_CODE_MAP[currentWeather.icon] || currentWeather.text;
     const feelsLike = currentWeather.feelsLike;
@@ -200,13 +170,11 @@ export async function getWeather(location = null, lang = 'zh_CN') {
     }
     weatherReport += '\n';
     
-    // 详细参数
     weatherReport += '\n详细参数：\n';
     if (humidity) weatherReport += `  · 湿度: ${humidity}%\n`;
     if (windDir && windScale) weatherReport += `  · 风向风力: ${windDir} ${windScale}级\n`;
     if (pressure) weatherReport += `  · 气压: ${pressure}hPa\n`;
     
-    // 7天预报
     if (forecast && forecast.length > 0) {
         weatherReport += '\n未来7天预报：\n';
         forecast.forEach(day => {
@@ -236,14 +204,55 @@ export async function getWeather(location = null, lang = 'zh_CN') {
     };
 }
 
-// Helper functions
-export function updateWeatherConfig(newConfig) {
-    Object.assign(WEATHER_CONFIG, newConfig);
-}
-
-export function getWeatherConfig() {
-    return { ...WEATHER_CONFIG };
-}
-
-export { GET_WEATHER_FUNCTION_DESC };
-export default getWeather;
+// ✅ THIS IS THE CRITICAL ADDITION - PROPER NETLIFY FUNCTION HANDLER
+export default async (request, context) => {
+    try {
+        console.log('Netlify function called:', request.method);
+        
+        // Parse request body
+        let body = {};
+        if (request.method === 'POST') {
+            const text = await request.text();
+            if (text) {
+                body = JSON.parse(text);
+            }
+        }
+        
+        // Extract parameters
+        const location = body.location || null;
+        const lang = body.lang || 'zh_CN';
+        
+        console.log(`Processing weather request for: ${location}`);
+        
+        // Call your existing weather function
+        const result = await getWeather(location, lang);
+        
+        // Return proper Response object format
+        return new Response(JSON.stringify(result), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            }
+        });
+        
+    } catch (error) {
+        console.error('Function error:', error);
+        
+        // Return proper error response
+        return new Response(JSON.stringify({
+            action: 'REQLLM',
+            text: '天气查询服务暂时不可用，请稍后再试',
+            data: null,
+            error: error.message
+        }), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            }
+        });
+    }
+};
