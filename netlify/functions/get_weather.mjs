@@ -1,37 +1,44 @@
-// get_weather.mjs - Complete Netlify Function Implementation
+// get_weather.mjs - Enhanced with Gemini AI and Traditional Chinese
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
 const TAG = 'weather';
 
-// Built-in configuration
+// Configuration
 const WEATHER_CONFIG = {
     "api_host": "m9487qfrq4.re.qweatherapi.com",
     "api_key": "80f8bafcecfb492f8251b630dcecac35",
     "default_location": "101070101"
 };
 
+// Weather code mapping with Traditional Chinese
 const WEATHER_CODE_MAP = {
-    "100": "晴", "101": "多云", "102": "少云", "103": "晴间多云", "104": "阴",
-    "150": "晴", "151": "多云", "152": "少云", "153": "晴间多云",
-    "300": "阵雨", "301": "强阵雨", "302": "雷阵雨", "303": "强雷阵雨", 
-    "304": "雷阵雨伴有冰雹", "305": "小雨", "306": "中雨", "307": "大雨", 
-    "308": "极端降雨", "309": "毛毛雨/细雨", "310": "暴雨", "311": "大暴雨", 
-    "312": "特大暴雨", "313": "冻雨", "314": "小到中雨", "315": "中到大雨",
+    "100": "晴", "101": "多雲", "102": "少雲", "103": "晴間多雲", "104": "陰",
+    "150": "晴", "151": "多雲", "152": "少雲", "153": "晴間多雲",
+    "300": "陣雨", "301": "強陣雨", "302": "雷陣雨", "303": "強雷陣雨", 
+    "304": "雷陣雨伴有冰雹", "305": "小雨", "306": "中雨", "307": "大雨", 
+    "308": "極端降雨", "309": "毛毛雨/細雨", "310": "暴雨", "311": "大暴雨", 
+    "312": "特大暴雨", "313": "凍雨", "314": "小到中雨", "315": "中到大雨",
     "316": "大到暴雨", "317": "暴雨到大暴雨", "318": "大暴雨到特大暴雨",
-    "350": "阵雨", "351": "强阵雨", "399": "雨",
+    "350": "陣雨", "351": "強陣雨", "399": "雨",
     "400": "小雪", "401": "中雪", "402": "大雪", "403": "暴雪", 
-    "404": "雨夹雪", "405": "雨雪天气", "406": "阵雨夹雪", "407": "阵雪",
+    "404": "雨夾雪", "405": "雨雪天氣", "406": "陣雨夾雪", "407": "陣雪",
     "408": "小到中雪", "409": "中到大雪", "410": "大到暴雪", 
-    "456": "阵雨夹雪", "457": "阵雪", "499": "雪",
-    "500": "薄雾", "501": "雾", "502": "霾", "503": "扬沙", "504": "浮尘",
-    "507": "沙尘暴", "508": "强沙尘暴", "509": "浓雾", "510": "强浓雾",
-    "511": "中度霾", "512": "重度霾", "513": "严重霾", "514": "大雾", "515": "特强浓雾",
-    "900": "热", "901": "冷", "999": "未知"
+    "456": "陣雨夾雪", "457": "陣雪", "499": "雪",
+    "500": "薄霧", "501": "霧", "502": "霾", "503": "揚沙", "504": "浮塵",
+    "507": "沙塵暴", "508": "強沙塵暴", "509": "濃霧", "510": "強濃霧",
+    "511": "中度霾", "512": "重度霾", "513": "嚴重霾", "514": "大霧", "515": "特強濃霧",
+    "900": "熱", "901": "冷", "999": "未知"
 };
 
 const HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36"
 };
 
-// Your existing helper functions (keep all of them)
+// Initialize Gemini AI
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+// Helper functions
 async function fetchCityInfo(location, apiKey, apiHost) {
     try {
         const encodedLocation = encodeURIComponent(location);
@@ -122,8 +129,57 @@ async function fetchWeatherForecast(locationId, apiKey, apiHost) {
     }
 }
 
-// Your existing getWeather function (keep as is)
-async function getWeather(location = null, lang = 'zh_CN') {
+// Enhanced function to generate natural language summary
+async function generateNaturalSummary(weatherData) {
+    try {
+        const { city, current, forecast } = weatherData;
+        
+        // Create structured prompt for Gemini in Traditional Chinese
+        const prompt = `
+作為一個專業的天氣播報員，請用自然、友好的語言播報以下天氣信息：
+
+城市：${city}
+當前天氣：
+- 天氣狀況：${current.text}
+- 溫度：${current.temp}°C
+- 體感溫度：${current.feelsLike}°C
+- 濕度：${current.humidity}%
+- 風向風力：${current.windDir} ${current.windScale}級
+- 氣壓：${current.pressure}hPa
+
+未來7天預報：
+${forecast.map(day => {
+    const date = new Date(day.fxDate).toLocaleDateString('zh-TW', { 
+        month: 'short', 
+        day: 'numeric',
+        weekday: 'short'
+    });
+    return `${date}: ${day.textDay}${day.textDay !== day.textNight ? '轉' + day.textNight : ''}，${day.tempMin}°C~${day.tempMax}°C`;
+}).join('\n')}
+
+請用溫馨、專業的語調播報，包含：
+1. 問候和當前天氣概況
+2. 詳細的當前天氣參數說明
+3. 未來幾天的天氣趨勢
+4. 實用的生活建議（如穿衣、出行等）
+5. 結束語
+
+回覆應該像真實的天氣主播一樣自然流暢，大約200-300字。
+`;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        return response.text();
+        
+    } catch (error) {
+        console.error('Gemini API error:', error);
+        // Fallback to original formatted text
+        return null;
+    }
+}
+
+// Modified getWeather function
+async function getWeather(location = null, lang = 'zh_TW') {
     const { api_host, api_key, default_location } = WEATHER_CONFIG;
     
     if (!location) {
@@ -135,8 +191,8 @@ async function getWeather(location = null, lang = 'zh_CN') {
     const cityInfo = await fetchCityInfo(location, api_key, api_host);
     if (!cityInfo) {
         return {
-            action: 'REQLLM',
-            text: `未找到相关的城市: ${location}，请确认地点是否正确`,
+            success: false,
+            summary: `未找到相關的城市: ${location}，請確認地點是否正確`,
             data: null
         };
     }
@@ -146,69 +202,84 @@ async function getWeather(location = null, lang = 'zh_CN') {
     const currentWeather = await fetchCurrentWeather(cityInfo.id, api_key, api_host);
     if (!currentWeather) {
         return {
-            action: 'REQLLM',
-            text: `获取 ${cityInfo.name} 的当前天气信息失败`,
+            success: false,
+            summary: `獲取 ${cityInfo.name} 的當前天氣信息失敗`,
             data: null
         };
     }
     
     const forecast = await fetchWeatherForecast(cityInfo.id, api_key, api_host);
     
-    let weatherReport = `您查询的位置是：${cityInfo.name}\n\n`;
+    const weatherData = {
+        city: cityInfo.name,
+        current: currentWeather,
+        forecast: forecast
+    };
     
-    const currentTemp = currentWeather.temp;
-    const currentCondition = WEATHER_CODE_MAP[currentWeather.icon] || currentWeather.text;
-    const feelsLike = currentWeather.feelsLike;
-    const humidity = currentWeather.humidity;
-    const windDir = currentWeather.windDir;
-    const windScale = currentWeather.windScale;
-    const pressure = currentWeather.pressure;
+    // Generate natural language summary with Gemini
+    console.log('Generating natural language summary with Gemini...');
+    const naturalSummary = await generateNaturalSummary(weatherData);
     
-    weatherReport += `当前天气: ${currentCondition}\n`;
-    weatherReport += `气温: ${currentTemp}°C`;
-    if (feelsLike && feelsLike !== currentTemp) {
-        weatherReport += ` (体感温度: ${feelsLike}°C)`;
+    // Use Gemini summary if available, otherwise fallback to original
+    const finalSummary = naturalSummary || createFallbackSummary(weatherData);
+    
+    return {
+        success: true,
+        summary: finalSummary,
+        data: weatherData,
+        generated_by: naturalSummary ? 'gemini' : 'fallback'
+    };
+}
+
+// Fallback summary function with Traditional Chinese
+function createFallbackSummary(weatherData) {
+    const { city, current, forecast } = weatherData;
+    
+    let weatherReport = `您查詢的位置是：${city}\n\n`;
+    weatherReport += `當前天氣: ${current.text}\n`;
+    weatherReport += `氣溫: ${current.temp}°C`;
+    if (current.feelsLike && current.feelsLike !== current.temp) {
+        weatherReport += ` (體感溫度: ${current.feelsLike}°C)`;
     }
     weatherReport += '\n';
     
-    weatherReport += '\n详细参数：\n';
-    if (humidity) weatherReport += `  · 湿度: ${humidity}%\n`;
-    if (windDir && windScale) weatherReport += `  · 风向风力: ${windDir} ${windScale}级\n`;
-    if (pressure) weatherReport += `  · 气压: ${pressure}hPa\n`;
+    weatherReport += '\n詳細參數：\n';
+    if (current.humidity) weatherReport += `  · 濕度: ${current.humidity}%\n`;
+    if (current.windDir && current.windScale) weatherReport += `  · 風向風力: ${current.windDir} ${current.windScale}級\n`;
+    if (current.pressure) weatherReport += `  · 氣壓: ${current.pressure}hPa\n`;
     
     if (forecast && forecast.length > 0) {
-        weatherReport += '\n未来7天预报：\n';
+        weatherReport += '\n未來7天預報：\n';
         forecast.forEach(day => {
-            const date = new Date(day.fxDate).toLocaleDateString('zh-CN', { 
+            const date = new Date(day.fxDate).toLocaleDateString('zh-TW', { 
                 month: 'short', 
                 day: 'numeric',
                 weekday: 'short'
             });
-            const dayWeather = WEATHER_CODE_MAP[day.iconDay] || day.textDay;
-            const nightWeather = WEATHER_CODE_MAP[day.iconNight] || day.textNight;
-            const weather = dayWeather === nightWeather ? dayWeather : `${dayWeather}转${nightWeather}`;
-            
+            const weather = day.textDay === day.textNight ? day.textDay : `${day.textDay}轉${day.textNight}`;
             weatherReport += `${date}: ${weather}，${day.tempMin}°C~${day.tempMax}°C\n`;
         });
     }
     
-    weatherReport += '\n（如需某一天的具体天气，请告诉我日期）';
-    
-    return {
-        action: 'REQLLM',
-        text: weatherReport,
-        data: {
-            city: cityInfo.name,
-            current: currentWeather,
-            forecast: forecast
-        }
-    };
+    return weatherReport;
 }
 
-// ✅ THIS IS THE CRITICAL ADDITION - PROPER NETLIFY FUNCTION HANDLER
+// Updated Netlify function handler
 export default async (request, context) => {
     try {
         console.log('Netlify function called:', request.method);
+        
+        // Handle CORS preflight
+        if (request.method === 'OPTIONS') {
+            return new Response(null, {
+                status: 200,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type'
+                }
+            });
+        }
         
         // Parse request body
         let body = {};
@@ -221,23 +292,22 @@ export default async (request, context) => {
         
         // Extract parameters
         const location = body.location || null;
-        const lang = body.lang || 'zh_CN';
+        const lang = body.lang || 'zh_TW';
         
         console.log(`Processing weather request for: ${location}`);
         
-        // Call your existing weather function
+        // Get weather with Gemini-enhanced summary
         const result = await getWeather(location, lang);
-
-        const openAIResponse = {
+        
+        // Return OpenAI-compatible response
+        return new Response(JSON.stringify({
             location: result.data?.city || location,
             current_weather: result.data?.current || null,
             forecast: result.data?.forecast || null,
-            summary: result.text,
-            success: true
-        };
-      
-        // Return proper Response object format
-        return new Response(JSON.stringify(result), {
+            summary: result.summary,
+            success: result.success,
+            ai_generated: result.generated_by === 'gemini'
+        }), {
             status: 200,
             headers: {
                 'Content-Type': 'application/json',
@@ -250,10 +320,10 @@ export default async (request, context) => {
     } catch (error) {
         console.error('Function error:', error);
         
-        // Return proper error response
         return new Response(JSON.stringify({
             error: error.message,
-            success: false
+            success: false,
+            summary: '抱歉，獲取天氣信息時發生錯誤，請稍後重試。'
         }), {
             status: 500,
             headers: {
