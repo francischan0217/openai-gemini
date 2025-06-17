@@ -274,7 +274,7 @@ function createFallbackSummary(weatherData) {
     return weatherReport;
 }
 
-// Updated Netlify function handler
+// Updated Netlify function handler - Returns only summary for OpenAI
 export default async (request, context) => {
     try {
         console.log('Netlify function called:', request.method);
@@ -309,18 +309,22 @@ export default async (request, context) => {
         // Get weather with Gemini-enhanced summary
         const result = await getWeather(location, lang);
         
-        // Return OpenAI-compatible response
-        return new Response(JSON.stringify({
-            location: result.data?.city || location,
-            current_weather: result.data?.current || null,
-            forecast: result.data?.forecast || null,
-            summary: result.summary,
-            success: result.success,
-            ai_generated: result.generated_by === 'gemini'
-        }), {
+        // ✅ FIXED: Return only the summary text for OpenAI
+        if (!result.success) {
+            return new Response(result.summary, {
+                status: 200,
+                headers: {
+                    'Content-Type': 'text/plain; charset=utf-8',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            });
+        }
+        
+        // Return just the natural language summary
+        return new Response(result.summary, {
             status: 200,
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'text/plain; charset=utf-8',
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type'
@@ -330,14 +334,11 @@ export default async (request, context) => {
     } catch (error) {
         console.error('Function error:', error);
         
-        return new Response(JSON.stringify({
-            error: error.message,
-            success: false,
-            summary: '抱歉，獲取天氣信息時發生錯誤，請稍後重試。'
-        }), {
+        // Return plain text error message
+        return new Response('抱歉，獲取天氣信息時發生錯誤，請稍後重試。', {
             status: 500,
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'text/plain; charset=utf-8',
                 'Access-Control-Allow-Origin': '*'
             }
         });
