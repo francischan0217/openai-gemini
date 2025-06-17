@@ -222,6 +222,11 @@ async function getHongKongWeather() {
         
         const currentData = await currentResponse.json();
         const forecastData = await forecastResponse.json();
+      
+        const temperature = currentData.temperature?.data?.[0]?.value || 'N/A';
+        const humidity = currentData.humidity?.data?.[0]?.value || 'N/A';
+        const weatherIcon = currentData.icon?.[0] || 'N/A';
+      
         
         let weatherReport = `香港當前天氣：\n\n`;
         weatherReport += `溫度: ${currentData.temperature}°C\n`;
@@ -231,6 +236,8 @@ async function getHongKongWeather() {
         if (forecastData.weatherForecast) {
             weatherReport += `\n未來天氣預報：\n`;
             forecastData.weatherForecast.slice(0, 3).forEach(day => {
+              const minTemp = day.forecastMintemp?.value || 'N/A';
+              const maxTemp = day.forecastMaxtemp?.value || 'N/A';
                 weatherReport += `${day.forecastDate}: ${day.forecastWeather}, ${day.forecastMintemp}°C-${day.forecastMaxtemp}°C\n`;
             });
         }
