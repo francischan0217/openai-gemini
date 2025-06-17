@@ -129,22 +129,18 @@ async function fetchWeatherForecast(locationId, apiKey, apiHost) {
     }
 }
 
-// Add this at the top of your generateNaturalSummary function
+// Enhanced function to generate natural language summary
 async function generateNaturalSummary(weatherData) {
-    // Debug environment variable
+   // Debug environment variable
     console.log('Environment check:');
     console.log('GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY);
     console.log('GEMINI_API_KEY length:', process.env.GEMINI_API_KEY?.length || 0);
     console.log('GEMINI_API_KEY first 10 chars:', process.env.GEMINI_API_KEY?.substring(0, 10) || 'undefined');
-    
-    // Check if Gemini is available
-    if (!model || !process.env.GEMINI_API_KEY) {
+// Check if Gemini is available
+      if (!model || !process.env.GEMINI_API_KEY) {
         console.log('Gemini not available - missing API key or model not initialized');
         return null;
     }
-
-// Enhanced function to generate natural language summary
-async function generateNaturalSummary(weatherData) {
     try {
         const { city, current, forecast } = weatherData;
         
