@@ -148,13 +148,13 @@ async function generateNaturalSummary(weatherData) {
         const prompt = `
 請以一位關懷且智慧的智能助理身份，簡潔明瞭地總結並報告以下天氣資訊。請使用繁體中文，語氣自然且親切，內容簡單易懂。
 
-城市：\${city}
+城市：${city}
 當前天氣：
-- 天氣狀況：\${current.text}
-- 溫度：\${current.temp}°C
-- 體感溫度：\${current.feelsLike}°C
-- 濕度：\${current.humidity}%
-- 風向風力：\${current.windDir} \${current.windScale}級
+- 天氣狀況：${current.text}
+- 溫度：${current.temp}°C
+- 體感溫度：${current.feelsLike}°C
+- 濕度：${current.humidity}%
+- 風向風力：${current.windDir} ${current.windScale}級
 
 請包含：
 1. 簡短問候與當前天氣概況
