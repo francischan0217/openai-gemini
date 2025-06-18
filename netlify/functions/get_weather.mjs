@@ -146,36 +146,24 @@ async function generateNaturalSummary(weatherData) {
         
         // Create structured prompt for Gemini in Traditional Chinese
         const prompt = `
-作為一個專業的天氣播報員，請用自然、友好的語言播報以下天氣信息：
+請以一位關懷且智慧的智能助理身份，簡潔明瞭地總結並報告以下天氣資訊。請使用繁體中文，語氣自然且親切，內容簡單易懂。
 
-城市：${city}
+城市：\${city}
 當前天氣：
-- 天氣狀況：${current.text}
-- 溫度：${current.temp}°C
-- 體感溫度：${current.feelsLike}°C
-- 濕度：${current.humidity}%
-- 風向風力：${current.windDir} ${current.windScale}級
-- 氣壓：${current.pressure}hPa
+- 天氣狀況：\${current.text}
+- 溫度：\${current.temp}°C
+- 體感溫度：\${current.feelsLike}°C
+- 濕度：\${current.humidity}%
+- 風向風力：\${current.windDir} \${current.windScale}級
 
-未來7天預報：
-${forecast.map(day => {
-    const date = new Date(day.fxDate).toLocaleDateString('zh-TW', { 
-        month: 'short', 
-        day: 'numeric',
-        weekday: 'short'
-    });
-    return `${date}: ${day.textDay}${day.textDay !== day.textNight ? '轉' + day.textNight : ''}，${day.tempMin}°C~${day.tempMax}°C`;
-}).join('\n')}
+請包含：
+1. 簡短問候與當前天氣概況
+2. 主要天氣參數說明
+3. 未來幾天天氣趨勢簡述
+4. 實用生活建議（穿衣、出行等）
+5. 溫馨結語
 
-請用溫馨、專業的語調播報，包含：
-1. 問候和當前天氣概況
-2. 詳細的當前天氣參數說明
-3. 未來幾天的天氣趨勢
-4. 實用的生活建議（如穿衣、出行等）
-5. 結束語
-
-回覆應該像真實的天氣主播一樣自然流暢，大約200-300字。
-`;
+回覆應保持簡潔且專業。
 
         const result = await model.generateContent(prompt);
         const response = await result.response;
