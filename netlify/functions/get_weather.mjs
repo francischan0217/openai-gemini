@@ -163,7 +163,7 @@ async function generateNaturalSummary(weatherData) {
 4. 實用生活建議（穿衣、出行等）
 5. 溫馨結語
 
-回覆應保持簡潔且專業。
+回覆應保持簡潔且專業。;
 
         const result = await model.generateContent(prompt);
         const response = await result.response;
