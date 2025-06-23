@@ -317,14 +317,32 @@ const transformFnResponse = ({ content, tool_call_id }, parts) => {
   }
   let response;
   try {
+    // Try to parse as JSON first
     response = JSON.parse(content);
   } catch (err) {
     console.error("Error parsing function response content:", err);
-    throw new HttpError("Invalid function response: " + content, 400);
+    
+    // If JSON parsing fails, handle as text response
+    if (typeof content === 'string' && content.trim()) {
+      // Wrap plain text responses in a structured format
+      response = {
+        success: false,
+        message: content.trim(),
+        data: null,
+        type: 'text_response'
+      };
+      console.warn("Received non-JSON response from MCP server, wrapping as:", response);
+    } else {
+      // If content is empty or not a string, throw the original error
+      throw new HttpError("Invalid function response: " + content, 400);
+    }
   }
+  
+  // Ensure response is an object
   if (typeof response !== "object" || response === null || Array.isArray(response)) {
     response = { result: response };
   }
+  
   if (!tool_call_id) {
     throw new HttpError("tool_call_id not specified", 400);
   }
@@ -343,6 +361,7 @@ const transformFnResponse = ({ content, tool_call_id }, parts) => {
     }
   };
 };
+
 
 const transformFnCalls = ({ tool_calls }) => {
   const calls = {};
